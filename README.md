@@ -1,2 +1,3 @@
 # libconfig_to_json
-Simple program that convert libconfig text to json
+Simple program with Qt Gui that convert libconfig text to json
+
