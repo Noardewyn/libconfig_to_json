@@ -17,63 +17,55 @@ MainWindow::~MainWindow()
   delete ui;
 }
 
-void MainWindow::on_pushButton_clicked()
-{
-  QString libconfigObj = ui->libconfigBrowser->toPlainText();
-  QString jsonObj = libconfigToJson(libconfigObj);
-
-  ui->jsonBrowser->setText(jsonObj);
-}
-
-void libconfigObjToJsonObj(const libconfig::Setting &libconfig, rapidjson::PrettyWriter<rapidjson::StringBuffer> &json)
+void libconfigObjToJsonObj(const libconfig::Setting &libconfigObj, rapidjson::PrettyWriter<rapidjson::StringBuffer> &jsonObj)
 {
   using namespace libconfig;
 
-  if(libconfig.isAggregate())
+  if(libconfigObj.isAggregate())
   {
-    if(libconfig.isList() || libconfig.isArray())
+    if(libconfigObj.isList() || libconfigObj.isArray())
     {
-      json.StartArray();
-      for(auto &item : libconfig)
+      jsonObj.StartArray();
+      for(auto &item : libconfigObj)
       {
-        json.Key(item.getName());
-        libconfigObjToJsonObj(item, json);
+        jsonObj.Key(item.getName());
+        libconfigObjToJsonObj(item, jsonObj);
       }
-      json.EndArray();
+      jsonObj.EndArray();
     }
-    else if(libconfig.isGroup())
+    else if(libconfigObj.isGroup())
     {
-      json.StartObject();
-      for(auto &item : libconfig)
+      jsonObj.StartObject();
+      for(auto &item : libconfigObj)
       {
-        json.Key(item.getName());
-        libconfigObjToJsonObj(item, json);
+        jsonObj.Key(item.getName());
+        libconfigObjToJsonObj(item, jsonObj);
       }
-      json.EndObject();
+      jsonObj.EndObject();
     }
   }
-  else if(libconfig.isScalar())
+  else if(libconfigObj.isScalar())
   {
-    switch( libconfig.getType() )
+    switch(libconfigObj.getType())
     {
      case Setting::Type::TypeInt:
-        json.Int(libconfig);
+        jsonObj.Int(libconfigObj);
         break;
 
      case Setting::Type::TypeInt64:
-        json.Int64(libconfig);
+        jsonObj.Int64(libconfigObj);
         break;
 
      case Setting::Type::TypeFloat:
-        json.Double(libconfig);
+        jsonObj.Double(libconfigObj);
         break;
 
      case Setting::Type::TypeBoolean:
-        json.Bool(libconfig);
+        jsonObj.Bool(libconfigObj);
         break;
 
      case Setting::Type::TypeString:
-        json.String(libconfig);
+        jsonObj.String(libconfigObj);
         break;
 
      default:
@@ -84,22 +76,37 @@ void libconfigObjToJsonObj(const libconfig::Setting &libconfig, rapidjson::Prett
 
 QString MainWindow::libconfigToJson(QString libconfigStr)
 {
-  libconfig::Config cfg;
-  rapidjson::StringBuffer buffer;
-  rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+  libconfig::Config libconfig;
 
   try
   {
-    cfg.readString(libconfigStr.toStdString());
+    libconfig.readString(libconfigStr.toStdString());
   }
   catch(const libconfig::ParseException &ex)
   {
-    return QString("PARSING ERROR!\n") + ex.what();
+    return QString("Libconfig text parsing error!\n") + ex.what();
   }
 
-  const libconfig::Setting& libconfigRoot = cfg.getRoot();
+  rapidjson::StringBuffer jsonBuffer;
+  rapidjson::PrettyWriter<rapidjson::StringBuffer> jsonWriter(jsonBuffer);
 
-  libconfigObjToJsonObj(libconfigRoot, writer);
+  try
+  {
+    const libconfig::Setting& libconfigRoot = libconfig.getRoot();
+    libconfigObjToJsonObj(libconfigRoot, jsonWriter);
+  }
+  catch(const libconfig::ParseException &ex)
+  {
+    return QString("Libconfig text parsing error!\n") + ex.what();
+  }
 
-  return buffer.GetString();
+  return jsonBuffer.GetString();
+}
+
+void MainWindow::on_libconfigBrowser_textChanged()
+{
+  QString libconfigObj = ui->libconfigBrowser->toPlainText();
+  QString jsonObj = libconfigToJson(libconfigObj);
+
+  ui->jsonBrowser->setText(jsonObj);
 }
